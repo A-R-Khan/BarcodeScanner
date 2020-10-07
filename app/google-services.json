@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "473133287871",
+    "firebase_url": "https://barcodescanner-324a7.firebaseio.com",
+    "project_id": "barcodescanner-324a7",
+    "storage_bucket": "barcodescanner-324a7.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:473133287871:android:220bf6d62a02704d8ef90a",
+        "android_client_info": {
+          "package_name": "com.kleva.barcodescanner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "473133287871-uo2v34t5s2f4rpdpvbgsubs22ctsp4ur.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kleva.barcodescanner",
+            "certificate_hash": "fadd3630a1566261ff2ceaeef2f4e2d31dfca07e"
+          }
+        },
+        {
+          "client_id": "473133287871-4n2sa3c0pngo4uvmbk3269u981r0haa9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAz-XqyBRZox8I6Fm4rUuqYZEpCORH44j4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "473133287871-4n2sa3c0pngo4uvmbk3269u981r0haa9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
