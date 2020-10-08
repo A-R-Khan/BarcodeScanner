@@ -28,10 +28,10 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textview.MaterialTextView;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.barcode.Barcode;
 import com.google.mlkit.vision.barcode.BarcodeScanner;
@@ -40,7 +40,6 @@ import com.google.mlkit.vision.barcode.BarcodeScanning;
 import com.google.mlkit.vision.common.InputImage;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -59,7 +58,8 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
     private ExecutorService cameraExecutor;
 
     private MaterialButton actionButton;
-    private PreviewView cameraPreviewView;
+    private MaterialTextView barcodeText;
+    private OverlaidPreviewView cameraPreviewView;
 
     private GoogleSignInClient mGoogleSignInClient;
     private String currentEmail = "";
@@ -94,6 +94,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
 
         actionButton = findViewById(R.id.sign_in_button);
         cameraPreviewView = findViewById(R.id.camera_preview);
+        barcodeText = findViewById(R.id.barcode_text);
 
         actionButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -137,38 +138,34 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
         ListenableFuture <ProcessCameraProvider> cameraProviderFuture =
                 ProcessCameraProvider.getInstance(this);
 
-        cameraProviderFuture.addListener(new Runnable() {
-            @Override
-            public void run() {
+        cameraProviderFuture.addListener(() -> {
 
-                ProcessCameraProvider cameraProvider = null;
-                try {
-                    cameraProvider = cameraProviderFuture.get();
-                } catch (ExecutionException | InterruptedException e) {
-                    e.printStackTrace();
-                }
-
-                Preview preview = new Preview.Builder()
-                        .build();
-                preview.setSurfaceProvider(cameraPreviewView.getSurfaceProvider());
-
-                ImageAnalysis imageAnalyzer = new ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build();
-                imageAnalyzer.setAnalyzer(cameraExecutor, MainActivity.this);
-
-                CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
-
-                try{
-                    assert cameraProvider != null;
-                    cameraProvider.unbindAll();
-                    cameraProvider.bindToLifecycle(MainActivity.this, cameraSelector, preview, imageAnalyzer);
-                }
-                catch (Exception e) {
-                    Log.e("BarCode", "Use case binding failed", e);
-                }
+            ProcessCameraProvider cameraProvider = null;
+            try {
+                cameraProvider = cameraProviderFuture.get();
+            } catch (ExecutionException | InterruptedException e) {
+                e.printStackTrace();
             }
 
+            Preview preview = new Preview.Builder()
+                    .build();
+            preview.setSurfaceProvider(cameraPreviewView.getSurfaceProvider());
+
+            ImageAnalysis imageAnalyzer = new ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build();
+            imageAnalyzer.setAnalyzer(cameraExecutor, MainActivity.this);
+
+            CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
+
+            try{
+                assert cameraProvider != null;
+                cameraProvider.unbindAll();
+                cameraProvider.bindToLifecycle(MainActivity.this, cameraSelector, preview, imageAnalyzer);
+            }
+            catch (Exception e) {
+                Log.e("BarCode", "Use case binding failed", e);
+            }
         }, ContextCompat.getMainExecutor(this));
 
     }
@@ -228,28 +225,49 @@ public class MainActivity extends AppCompatActivity implements ImageAnalysis.Ana
     @UseExperimental(markerClass = androidx.camera.core.ExperimentalGetImage.class)
     public void analyze(@NonNull ImageProxy imageProxy) {
 
+        Log.e("BARCODES", "Analyzing...");
+
         Image mediaImage = imageProxy.getImage();
         if(mediaImage != null) {
             InputImage image =
                     InputImage.fromMediaImage(mediaImage, imageProxy.getImageInfo().getRotationDegrees());
 
+            Log.e("BARCODE", image.getHeight() + " " + image.getWidth());
+
             Task<List<Barcode>> result = scanner.process(image)
                     .addOnSuccessListener(barcodes -> {
-                        for (Barcode barcode : barcodes) {
 
-                            if(barcode != null) {
-                                if (! previousBarcode.equals(barcode.getDisplayValue())) {
+                        if (!(barcodes == null || barcodes.size() == 0)) {
+
+                            Rect testRect = new Rect();
+                            cameraPreviewView.getTestOverlayRect().roundOut(testRect);
+
+                            for (Barcode barcode : barcodes) {
+
+                                Log.e("BARCODE", testRect + " " + barcode.getBoundingBox());
+                                Log.e("BARCODE", String.valueOf(testRect.contains(barcode.getBoundingBox())));
+                                if ((!previousBarcode.equals(barcode.getDisplayValue())) &&
+                                    testRect.contains(barcode.getBoundingBox())) {
+
                                     previousBarcode = barcode.getDisplayValue();
+                                    cameraPreviewView.updateOverlay(true);
 
-                                    // CAUTION HIGHLY UNSECURE NEVER USE THIS CLIENT SIDE UNLESS ITS FOR TESTING
-
-                                    new SendMailTask().execute("myEmail@gmail.com",
-                                            "myPassword",
+                                    // CAUTION HIGHLY INSECURE NEVER USE THIS CLIENT SIDE UNLESS ITS FOR TESTING
+                                    new SendMailTask().execute("youremail@gmail.com",
+                                            "yourpassword",
                                             Collections.singletonList(currentEmail),
                                             "barcode result",
                                             barcode.getDisplayValue());
+
+                                    barcodeText.setText(barcode.getDisplayValue());
+
+                                    break;
+
                                 }
                             }
+                        }
+                        else {
+                            cameraPreviewView.updateOverlay(false);
                         }
                         imageProxy.close();
                         mediaImage.close();
